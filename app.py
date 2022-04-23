@@ -83,12 +83,6 @@ def hello():
        print('Request for hello page received with no name or blank name -- redirecting')
        return redirect(url_for('index'))
 
-@app.route('/test', methods=['GET'])
-def test():
-    response = jsonify({'some': 'data'})
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    return response
-
 @app.route('/read', methods=['GET'])
 def read_item():
     doc_id = request.args.get('doc_id')
