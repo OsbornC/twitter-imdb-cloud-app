@@ -93,7 +93,6 @@ def test():
 def read_item():
     doc_id = request.args.get('doc_id')
     account_number = request.args.get('account_number')
-    # We can do an efficient point read lookup on partition key and id
     key = doc_id + '_' + account_number
     r = {}
 
@@ -109,7 +108,6 @@ def read_item():
     response = jsonify({'Subtotal': r.get('subtotal')})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
-# r = container.read_item(item='SalesOrder1', partition_key='Account1')
 
 @app.route('/box_office_top_movies', methods=['GET'])
 def fetch_box_office_top_movies():
@@ -121,10 +119,6 @@ def fetch_box_office_top_movies():
         movie_list = r.get('movie_list')
     else:
         movie_list = json.loads(redis_client.get(key))
-    # print('Item read by Id {0}'.format(key))
-    # print('Partition Key: {0}'.format(r.get('partitionKey')))
-    # print('Subtotal: {0}'.format(r.get('subtotal')))
-    
     title = []
     for movie in movie_list:
         movie_response = imdb_container.read_item(item=movie, partition_key=movie)
@@ -135,9 +129,8 @@ def fetch_box_office_top_movies():
 
 @app.route('/movie_related_tweets', methods=['GET'])
 def fetch_movie_related_tweets():
-    movie_list = []
-    tweet_data = twitter_container.read_item(item="tt4123432", partition_key="tt4123432")
-    print(tweet_data)
+    movie_id = request.args.get('movie_id')
+    tweet_data = twitter_container.read_item(item=movie_id, partition_key=movie_id)
     response = jsonify({'movie_list': tweet_data.get('tweet_ids')})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
