@@ -124,8 +124,15 @@ def fetch_box_office_top_movies():
 @app.route('/movie_related_tweets', methods=['GET'])
 def fetch_movie_related_tweets():
     movie_id = request.args.get('movie_id')
-    tweet_data = twitter_container.read_item(item=movie_id, partition_key=movie_id)
-    response = jsonify({'movie_list': tweet_data.get('tweet_ids')})
+    # tweet_data = twitter_container.read_item(item=movie_id, partition_key=movie_id)
+    items = list(twitter_container.query_items(
+        query="Select top 10 * from c where c.partitionKey=@movie_id order by c._ts DESC",
+        parameters=[
+            { "name":"@movie_id", "value": movie_id }
+        ]
+    ))
+    tweet_ids = [item.get('conversation_id') for item in items]
+    response = jsonify({'movie_list': tweet_ids})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
