@@ -153,7 +153,11 @@ def fetch_top_rated_movies():
         movie_list = r.get('whole_movie_set')[0:10]
     else:
         movie_list = json.loads(redis_client.get(redis_key))
-    response = jsonify({'movie_list': movie_list})
+    title = []
+    for movie in movie_list:
+        movie_response = imdb_container.read_item(item=movie, partition_key=movie)
+        title.append(movie_response)
+    response = jsonify({'movie_list': title})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
