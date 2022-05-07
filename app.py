@@ -17,6 +17,8 @@ IMDB_DATABASE_ID = config.settings['imdb_database_id']
 IMDB_CONTAINER_ID = config.settings['imdb_container_id']
 TWITTER_DATABASE_ID = config.settings['twitter_database_id']
 TWITTER_CONTAINER_ID = config.settings['twitter_container_id']
+TOP_MOVIE_DATABASE_ID = config.settings['top_movie_database_id']
+TOP_MOVIE_CONTAINER_ID = config.settings['top_movie_container_id']
 
 app = Flask(__name__)
 
@@ -37,12 +39,18 @@ try:
     twitter_db = client.create_database(id=TWITTER_DATABASE_ID)
     print('Database with id \'{0}\' created'.format(TWITTER_DATABASE_ID))
 
+    top_movie_db = client.create_database(id=TOP_MOVIE_DATABASE_ID)
+    print('Database with id \'{0}\' created'.format(TOP_MOVIE_DATABASE_ID))
+
 except exceptions.CosmosResourceExistsError:
     imdb_db = client.get_database_client(IMDB_DATABASE_ID)
     print('Database with id \'{0}\' was found'.format(IMDB_DATABASE_ID))
 
     twitter_db = client.get_database_client(TWITTER_DATABASE_ID)
     print('Database with id \'{0}\' was found'.format(TWITTER_DATABASE_ID))
+
+    top_movie_db = client.get_database_client(TOP_MOVIE_DATABASE_ID)
+    print('Database with id \'{0}\' was found'.format(TOP_MOVIE_DATABASE_ID))
 
 # setup container for this sample
 try:
@@ -52,11 +60,18 @@ try:
     twitter_container = twitter_db.create_container(id=TWITTER_CONTAINER_ID, partition_key=PartitionKey(path='/partitionKey'))
     print('Container with id \'{0}\' created'.format(TWITTER_CONTAINER_ID))
 
+    top_movie_container = top_movie_db.create_container(id=TOP_MOVIE_CONTAINER_ID, partition_key=PartitionKey(path='/partitionKey'))
+    print('Container with id \'{0}\' created'.format(TOP_MOVIE_CONTAINER_ID))
+
 except exceptions.CosmosResourceExistsError:
     imdb_container = imdb_db.get_container_client(IMDB_CONTAINER_ID)
     print('Container with id \'{0}\' was found'.format(IMDB_CONTAINER_ID))
+
     twitter_container = twitter_db.get_container_client(TWITTER_CONTAINER_ID)
     print('Container with id \'{0}\' was found'.format(TWITTER_CONTAINER_ID))
+
+    top_movie_container = top_movie_db.get_container_client(TOP_MOVIE_CONTAINER_ID)
+    print('Container with id \'{0}\' was found'.format(TOP_MOVIE_CONTAINER_ID))
 
 
 @app.route('/')
@@ -141,7 +156,7 @@ def fetch_movie_related_tweets():
 
 @app.route('/top_rated_movies', methods=['GET'])
 def fetch_top_rated_movies():
-    key = 'WHOLE_MOVIE_SET'
+    key = 'TOP_RATED_ID'
     today = date.today()
     start = today - timedelta(days=today.weekday())
     start = str(start)
@@ -149,8 +164,8 @@ def fetch_top_rated_movies():
     movie_list = []
     if redis_client.get(redis_key) is None:
         r = imdb_container.read_item(item=key, partition_key=key)
-        redis_client.set(redis_key, json.dumps(r.get('whole_movie_set')[0:10]))
-        movie_list = r.get('whole_movie_set')[0:10]
+        redis_client.set(redis_key, json.dumps(r.get('movie_list')[0:10]))
+        movie_list = r.get('movie_list')[0:10]
     else:
         movie_list = json.loads(redis_client.get(redis_key))
     title = []
@@ -161,20 +176,20 @@ def fetch_top_rated_movies():
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
-# @app.route('/top_movie_related_tweets', methods=['GET'])
-# def fetch_top_movie_related_tweets():
-#     movie_id = request.args.get('movie_id')
-#     # tweet_data = twitter_container.read_item(item=movie_id, partition_key=movie_id)
-#     items = list(twitter_container.query_items(
-#         query="Select top 10 * from c where c.partitionKey=@movie_id order by c.public_metrics.like_count DESC",
-#         parameters=[
-#             { "name":"@movie_id", "value": movie_id }
-#         ]
-#     ))
-#     tweet_ids = [item.get('conversation_id') for item in items]
-#     response = jsonify({'movie_list': tweet_ids})
-#     response.headers.add('Access-Control-Allow-Origin', '*')
-#     return response
+@app.route('/top_movie_related_tweets', methods=['GET'])
+def fetch_top_movie_related_tweets():
+    movie_id = request.args.get('movie_id')
+    # tweet_data = top_movie_container.read_item(item=movie_id, partition_key=movie_id)
+    items = list(top_movie_container.query_items(
+        query="Select top 10 * from c where c.partitionKey=@movie_id order by c.favorite_count DESC",
+        parameters=[
+            { "name":"@movie_id", "value": movie_id }
+        ]
+    ))
+    tweet_ids = [item.get('id') for item in items]
+    response = jsonify({'movie_list': tweet_ids})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 if __name__ == '__main__':
    app.run()
