@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
 import requests
 import os 
@@ -8,7 +8,6 @@ import azure.cosmos.exceptions as exceptions
 from azure.cosmos.partition_key import PartitionKey
 import redis
 import json
-import datetime
 import config
 # from flask_cors import CORS, cross_origin
 
@@ -106,13 +105,17 @@ def read_item():
 @app.route('/box_office_top_movies', methods=['GET'])
 def fetch_box_office_top_movies():
     key = 'BOX_OFFICE_TOP_MOVIES'
+    today = date.today()
+    start = today - timedelta(days=today.weekday())
+    start = str(start)
+    redis_key = key + '/' + start
     movie_list = []
-    if redis_client.get(key) is None:
+    if redis_client.get(redis_key) is None:
         r = imdb_container.read_item(item=key, partition_key=key)
-        redis_client.set(key, json.dumps(r.get('movie_list')))
+        redis_client.set(redis_key, json.dumps(r.get('movie_list')))
         movie_list = r.get('movie_list')
     else:
-        movie_list = json.loads(redis_client.get(key))
+        movie_list = json.loads(redis_client.get(redis_key))
     title = []
     for movie in movie_list:
         movie_response = imdb_container.read_item(item=movie, partition_key=movie)
