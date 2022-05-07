@@ -139,5 +139,38 @@ def fetch_movie_related_tweets():
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
+@app.route('/top_rated_movies', methods=['GET'])
+def fetch_top_rated_movies():
+    key = 'WHOLE_MOVIE_SET'
+    today = date.today()
+    start = today - timedelta(days=today.weekday())
+    start = str(start)
+    redis_key = key + '-' + start
+    movie_list = []
+    if redis_client.get(redis_key) is None:
+        r = imdb_container.read_item(item=key, partition_key=key)
+        redis_client.set(redis_key, json.dumps(r.get('whole_movie_set')[0:10]))
+        movie_list = r.get('whole_movie_set')[0:10]
+    else:
+        movie_list = json.loads(redis_client.get(redis_key))
+    response = jsonify({'movie_list': movie_list})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
+# @app.route('/top_movie_related_tweets', methods=['GET'])
+# def fetch_top_movie_related_tweets():
+#     movie_id = request.args.get('movie_id')
+#     # tweet_data = twitter_container.read_item(item=movie_id, partition_key=movie_id)
+#     items = list(twitter_container.query_items(
+#         query="Select top 10 * from c where c.partitionKey=@movie_id order by c.public_metrics.like_count DESC",
+#         parameters=[
+#             { "name":"@movie_id", "value": movie_id }
+#         ]
+#     ))
+#     tweet_ids = [item.get('conversation_id') for item in items]
+#     response = jsonify({'movie_list': tweet_ids})
+#     response.headers.add('Access-Control-Allow-Origin', '*')
+#     return response
+
 if __name__ == '__main__':
    app.run()
