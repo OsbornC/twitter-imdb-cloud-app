@@ -149,7 +149,22 @@ def fetch_movie_related_tweets():
             { "name":"@movie_id", "value": movie_id }
         ]
     ))
-    tweet_ids = [item.get('conversation_id') for item in items]
+    tweet_ids = [(item.get('conversation_id')) for item in items]
+    response = jsonify({'movie_list': tweet_ids})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
+@app.route('/movie_related_etags', methods=['GET'])
+def fetch_movie_related_etags():
+    movie_id = request.args.get('movie_id')
+    # tweet_data = twitter_container.read_item(item=movie_id, partition_key=movie_id)
+    items = list(twitter_container.query_items(
+        query="Select top 10 * from c where c.partitionKey=@movie_id order by c._ts DESC",
+        parameters=[
+            { "name":"@movie_id", "value": movie_id }
+        ]
+    ))
+    tweet_ids = [(item.get('_etag')) for item in items]
     response = jsonify({'movie_list': tweet_ids})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
@@ -187,6 +202,21 @@ def fetch_top_movie_related_tweets():
         ]
     ))
     tweet_ids = [item.get('id') for item in items]
+    response = jsonify({'movie_list': tweet_ids})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
+@app.route('/top_movie_tweet_etags', methods=['GET'])
+def fetch_top_movie_tweet_etags():
+    movie_id = request.args.get('movie_id')
+    # tweet_data = top_movie_container.read_item(item=movie_id, partition_key=movie_id)
+    items = list(top_movie_container.query_items(
+        query="Select top 10 * from c where c.partitionKey=@movie_id order by c.favorite_count DESC",
+        parameters=[
+            { "name":"@movie_id", "value": movie_id }
+        ]
+    ))
+    tweet_ids = [item.get('_etag') for item in items]
     response = jsonify({'movie_list': tweet_ids})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
