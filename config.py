@@ -8,5 +8,6 @@ settings = {
     'twitter_database_id': os.environ.get('COSMOS_TWITTER_DATABASE', 'ToDoList'),
     'twitter_container_id': os.environ.get('COSMOS_TWITTER_CONTAINER', 'Items'),
     'top_movie_database_id': os.environ.get('COSMOS_TOP_MOVIE_DATABASE', 'TOP_MOVIES'),
-    'top_movie_container_id': os.environ.get('COSMOS_TOP_MOVIE_CONTAINER', 'TOP_MOVIES')
+    'top_movie_container_id': os.environ.get('COSMOS_TOP_MOVIE_CONTAINER', 'TOP_MOVIES'),
+    'sentiment_container_id': os.environ.get('COSMOS_SENTIMENT_CONTAINER', 'MOVIE_SENTIMENT')
 }

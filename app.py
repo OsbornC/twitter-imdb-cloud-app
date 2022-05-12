@@ -9,7 +9,7 @@ from azure.cosmos.partition_key import PartitionKey
 import redis
 import json
 import config
-# from flask_cors import CORS, cross_origin
+from flask_cors import CORS, cross_origin
 
 HOST = config.settings['host']
 MASTER_KEY = config.settings['master_key']
@@ -19,6 +19,7 @@ TWITTER_DATABASE_ID = config.settings['twitter_database_id']
 TWITTER_CONTAINER_ID = config.settings['twitter_container_id']
 TOP_MOVIE_DATABASE_ID = config.settings['top_movie_database_id']
 TOP_MOVIE_CONTAINER_ID = config.settings['top_movie_container_id']
+MOVIE_SENTIMENT_CONTAINER_ID = config.settings['sentiment_container_id']
 
 app = Flask(__name__)
 
@@ -29,46 +30,17 @@ accessKey = '43L8ufTJY8VCrOKtrXm5lS0znLvpUFjcIAzCaOrtjPk='
 redis_client = redis.StrictRedis(host=hostName, port=6380,
                       password=accessKey, ssl=True)
 
-# CORS(app)
+CORS(app)
 
 client = cosmos_client.CosmosClient(HOST, {'masterKey': MASTER_KEY}, user_agent="CosmosDBPythonQuickstart", user_agent_overwrite=True)
-try:
-    imdb_db = client.create_database(id=IMDB_DATABASE_ID)
-    print('Database with id \'{0}\' created'.format(IMDB_DATABASE_ID))
 
-    twitter_db = client.create_database(id=TWITTER_DATABASE_ID)
-    print('Database with id \'{0}\' created'.format(TWITTER_DATABASE_ID))
+imdb_db = client.get_database_client(IMDB_DATABASE_ID)
 
-    top_movie_db = client.create_database(id=TOP_MOVIE_DATABASE_ID)
-    print('Database with id \'{0}\' created'.format(TOP_MOVIE_DATABASE_ID))
+twitter_db = client.get_database_client(TWITTER_DATABASE_ID)
 
-except exceptions.CosmosResourceExistsError:
-    imdb_db = client.get_database_client(IMDB_DATABASE_ID)
-    print('Database with id \'{0}\' was found'.format(IMDB_DATABASE_ID))
-
-    twitter_db = client.get_database_client(TWITTER_DATABASE_ID)
-    print('Database with id \'{0}\' was found'.format(TWITTER_DATABASE_ID))
-
-    top_movie_db = client.get_database_client(TOP_MOVIE_DATABASE_ID)
-    print('Database with id \'{0}\' was found'.format(TOP_MOVIE_DATABASE_ID))
-
-# setup container for this sample
-try:
-    imdb_container = imdb_db.create_container(id=IMDB_CONTAINER_ID, partition_key=PartitionKey(path='/partitionKey'))
-    print('Container with id \'{0}\' created'.format(IMDB_CONTAINER_ID))
-    
-    twitter_container = twitter_db.create_container(id=TWITTER_CONTAINER_ID, partition_key=PartitionKey(path='/partitionKey'))
-    print('Container with id \'{0}\' created'.format(TWITTER_CONTAINER_ID))
-
-    top_movie_container = top_movie_db.create_container(id=TOP_MOVIE_CONTAINER_ID, partition_key=PartitionKey(path='/partitionKey'))
-    print('Container with id \'{0}\' created'.format(TOP_MOVIE_CONTAINER_ID))
-
-except exceptions.CosmosResourceExistsError:
-    imdb_container = imdb_db.get_container_client(IMDB_CONTAINER_ID)
-    print('Container with id \'{0}\' was found'.format(IMDB_CONTAINER_ID))
-
-    twitter_container = twitter_db.get_container_client(TWITTER_CONTAINER_ID)
-    print('Container with id \'{0}\' was found'.format(TWITTER_CONTAINER_ID))
+imdb_container = imdb_db.get_container_client(IMDB_CONTAINER_ID)
+twitter_container = twitter_db.get_container_client(TWITTER_CONTAINER_ID)
+sentiment_container = twitter_db.get_container_client(MOVIE_SENTIMENT_CONTAINER_ID)
 
     top_movie_container = top_movie_db.get_container_client(TOP_MOVIE_CONTAINER_ID)
     print('Container with id \'{0}\' was found'.format(TOP_MOVIE_CONTAINER_ID))
@@ -97,26 +69,6 @@ def hello():
        print('Request for hello page received with no name or blank name -- redirecting')
        return redirect(url_for('index'))
 
-@app.route('/read', methods=['GET'])
-def read_item():
-    doc_id = request.args.get('doc_id')
-    account_number = request.args.get('account_number')
-    key = doc_id + '_' + account_number
-    r = {}
-
-    # Caching Layer
-    if redis_client.get(key) is None:
-        r = imdb_container.read_item(item=doc_id, partition_key=account_number)
-        redis_client.set(key, json.dumps(r))
-    else:
-        r = json.loads(redis_client.get(key))
-    print('Item read by Id {0}'.format(doc_id))
-    print('Partition Key: {0}'.format(r.get('partitionKey')))
-    print('Subtotal: {0}'.format(r.get('subtotal')))
-    response = jsonify({'Subtotal': r.get('subtotal')})
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    return response
-
 @app.route('/box_office_top_movies', methods=['GET'])
 def fetch_box_office_top_movies():
     key = 'BOX_OFFICE_TOP_MOVIES'
@@ -142,7 +94,6 @@ def fetch_box_office_top_movies():
 @app.route('/movie_related_tweets', methods=['GET'])
 def fetch_movie_related_tweets():
     movie_id = request.args.get('movie_id')
-    # tweet_data = twitter_container.read_item(item=movie_id, partition_key=movie_id)
     items = list(twitter_container.query_items(
         query="Select top 10 * from c where c.partitionKey=@movie_id order by c._ts DESC",
         parameters=[
@@ -192,6 +143,37 @@ def fetch_top_movie_related_tweets():
     response = jsonify({'movie_list': tweet_ids, 'etags': etags})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
+
+# @app.route('/movie_related_tweets_emojis', methods=['GET'])
+# def fetch_movie_related_tweets_emojis():
+#     movie_id = request.args.get('movie_id')
+#     days = [(datetime.now() - timedelta(days=i)).date() for i in range(8)]
+#     days_sentiments = []
+#     for i in range(7):
+#         today = date.today()
+#         current_date = days[i].strftime("%Y-%m-%d")
+#         prev_date = days[i+1].strftime("%Y-%m-%d")
+#         id = str(current_date) + movie_id
+#         item = list(sentiment_container.query_items(
+#             query="Select * from c where c.id=@id and c.partitionKey=@movie_id",
+#             parameters=[
+#                 { "name":"@id", "value": id },
+#                 { "name":"@movie_id", "value": movie_id}
+#             ]
+#         ))
+#         if item:
+#             days_sentiments.append(item[0])
+
+#     # items = list(sentiment_container.query_items(
+#     #     query="Select top 1 * from c where c.partitionKey=@movie_id order by c._ts DESC",
+#     #     parameters=[
+#     #         { "name":"@movie_id", "value": movie_id }
+#     #     ]
+#     # ))
+#     # sentiments = [item.get('senti') for item in items]
+#     response = jsonify({'sentiment_percentage': days_sentiments})
+#     response.headers.add('Access-Control-Allow-Origin', '*')
+#     return response
 
 if __name__ == '__main__':
    app.run()
