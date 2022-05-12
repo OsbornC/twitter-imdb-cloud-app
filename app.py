@@ -105,7 +105,7 @@ def fetch_movie_related_tweets():
         ]
     ))
     tweet_ids = [(item.get('conversation_id')) for item in items]
-    etags = [item.get('_etag') for item in items]
+    etags = [item.get('emoji_tag') for item in items]
     response = jsonify({'movie_list': tweet_ids, 'etags': etags})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
@@ -143,7 +143,7 @@ def fetch_top_movie_related_tweets():
         ]
     ))
     tweet_ids = [item.get('id') for item in items]
-    etags = [item.get('_etag') for item in items]
+    etags = [item.get('emoji_tag') for item in items]
     response = jsonify({'movie_list': tweet_ids, 'etags': etags})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
