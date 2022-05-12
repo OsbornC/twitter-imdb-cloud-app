@@ -38,12 +38,14 @@ imdb_db = client.get_database_client(IMDB_DATABASE_ID)
 
 twitter_db = client.get_database_client(TWITTER_DATABASE_ID)
 
+top_movie_db = client.get_database_client(TOP_MOVIE_DATABASE_ID)
+
 imdb_container = imdb_db.get_container_client(IMDB_CONTAINER_ID)
 twitter_container = twitter_db.get_container_client(TWITTER_CONTAINER_ID)
 sentiment_container = twitter_db.get_container_client(MOVIE_SENTIMENT_CONTAINER_ID)
 
-    top_movie_container = top_movie_db.get_container_client(TOP_MOVIE_CONTAINER_ID)
-    print('Container with id \'{0}\' was found'.format(TOP_MOVIE_CONTAINER_ID))
+top_movie_container = top_movie_db.get_container_client(TOP_MOVIE_CONTAINER_ID)
+print('Container with id \'{0}\' was found'.format(TOP_MOVIE_CONTAINER_ID))
 
 
 @app.route('/')
@@ -77,6 +79,8 @@ def fetch_box_office_top_movies():
     start = str(start)
     redis_key = key + '/' + start
     movie_list = []
+    # r = imdb_container.read_item(item=key, partition_key=key)
+    # print(r.get('movie_list'))
     if redis_client.get(redis_key) is None:
         r = imdb_container.read_item(item=key, partition_key=key)
         redis_client.set(redis_key, json.dumps(r.get('movie_list')))
