@@ -9,7 +9,7 @@ from azure.cosmos.partition_key import PartitionKey
 import redis
 import json
 import config
-from flask_cors import CORS, cross_origin
+# from flask_cors import CORS, cross_origin
 
 HOST = config.settings['host']
 MASTER_KEY = config.settings['master_key']
@@ -30,7 +30,7 @@ accessKey = '43L8ufTJY8VCrOKtrXm5lS0znLvpUFjcIAzCaOrtjPk='
 redis_client = redis.StrictRedis(host=hostName, port=6380,
                       password=accessKey, ssl=True)
 
-CORS(app)
+# CORS(app)
 
 client = cosmos_client.CosmosClient(HOST, {'masterKey': MASTER_KEY}, user_agent="CosmosDBPythonQuickstart", user_agent_overwrite=True)
 
