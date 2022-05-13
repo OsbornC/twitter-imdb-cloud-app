@@ -37,6 +37,7 @@ client = cosmos_client.CosmosClient(HOST, {'masterKey': MASTER_KEY}, user_agent=
 imdb_db = client.get_database_client(IMDB_DATABASE_ID)
 
 twitter_db = client.get_database_client(TWITTER_DATABASE_ID)
+top_movie_db = client.get_database_client(TOP_MOVIE_DATABASE_ID)
 
 top_movie_db = client.get_database_client(TOP_MOVIE_DATABASE_ID)
 
@@ -45,7 +46,6 @@ twitter_container = twitter_db.get_container_client(TWITTER_CONTAINER_ID)
 sentiment_container = twitter_db.get_container_client(MOVIE_SENTIMENT_CONTAINER_ID)
 
 top_movie_container = top_movie_db.get_container_client(TOP_MOVIE_CONTAINER_ID)
-print('Container with id \'{0}\' was found'.format(TOP_MOVIE_CONTAINER_ID))
 
 
 @app.route('/')
@@ -148,36 +148,40 @@ def fetch_top_movie_related_tweets():
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
-# @app.route('/movie_related_tweets_emojis', methods=['GET'])
-# def fetch_movie_related_tweets_emojis():
-#     movie_id = request.args.get('movie_id')
-#     days = [(datetime.now() - timedelta(days=i)).date() for i in range(8)]
-#     days_sentiments = []
-#     for i in range(7):
-#         today = date.today()
-#         current_date = days[i].strftime("%Y-%m-%d")
-#         prev_date = days[i+1].strftime("%Y-%m-%d")
-#         id = str(current_date) + movie_id
-#         item = list(sentiment_container.query_items(
-#             query="Select * from c where c.id=@id and c.partitionKey=@movie_id",
-#             parameters=[
-#                 { "name":"@id", "value": id },
-#                 { "name":"@movie_id", "value": movie_id}
-#             ]
-#         ))
-#         if item:
-#             days_sentiments.append(item[0])
-
-#     # items = list(sentiment_container.query_items(
-#     #     query="Select top 1 * from c where c.partitionKey=@movie_id order by c._ts DESC",
-#     #     parameters=[
-#     #         { "name":"@movie_id", "value": movie_id }
-#     #     ]
-#     # ))
-#     # sentiments = [item.get('senti') for item in items]
-#     response = jsonify({'sentiment_percentage': days_sentiments})
-#     response.headers.add('Access-Control-Allow-Origin', '*')
-#     return response
+@app.route('/movie_related_tweets_emojis', methods=['GET'])
+def fetch_movie_related_tweets_emojis():
+    movie_id = request.args.get('movie_id')
+    # days = [(datetime.now() - timedelta(days=i)).date() for i in range(8)]
+    # days_sentiments = []
+    # for i in range(7):
+    #     today = date.today()
+    #     current_date = days[i].strftime("%Y-%m-%d")
+    #     prev_date = days[i+1].strftime("%Y-%m-%d")
+    #     id = str(current_date) + movie_id
+    #     item = list(sentiment_container.query_items(
+    #         query="Select * from c where c.id=@id and c.partitionKey=@movie_id",
+    #         parameters=[
+    #             { "name":"@id", "value": id },
+    #             { "name":"@movie_id", "value": movie_id}
+    #         ]
+    #     ))
+    #     if item:
+    #         days_sentiments.append(item[0])
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    id = 'sentiments' + movie_id
+    print('id',id)
+    item = list(sentiment_container.query_items(
+        query="Select top 1 * from c where c.partitionKey=@movie_id and c.id=@id order by c._ts DESC",
+        parameters=[
+            { "name":"@id", "value": id },
+            { "name":"@movie_id", "value": movie_id }
+        ]
+    ))
+    if item:
+        item = item[0]
+    response = jsonify({'sentiment_percentage': item})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 if __name__ == '__main__':
    app.run()
